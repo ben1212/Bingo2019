@@ -37,6 +37,18 @@ function _startBot() {
     const TelegramBot = require('node-telegram-bot-api');
     bot = new TelegramBot(BOT_TOKEN, { polling: true });
     console.log('[TelegramBot] Bot started with polling.');
+
+    bot.on('polling_error', (error) => {
+      if (error?.message?.includes('409 Conflict')) {
+        console.warn('[TelegramBot] Polling conflict (another instance active), will retry...');
+      } else {
+        console.warn('[TelegramBot] Polling error:', error.message);
+      }
+    });
+
+    bot.on('error', (error) => {
+      console.warn('[TelegramBot] General error:', error.message);
+    });
   } catch (err) {
     console.error('[TelegramBot] Failed to init:', err.message);
     module.exports = {};

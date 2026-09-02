@@ -6,6 +6,13 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
+process.on('uncaughtException', (err) => {
+  console.error('[CRITICAL UNCAUGHT EXCEPTION]', err.message, err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[CRITICAL UNHANDLED REJECTION]', reason);
+});
+
 const { supabase, get, run, all } = require('./db');
 const { escapeHTML, normalizePhone, generateReferralCode } = require('./utils');
 const gameEngine = require('./gameEngine');
