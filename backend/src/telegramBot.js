@@ -272,142 +272,416 @@ function _startBot() {
     }
   });
 
+  // ─── Conversation state tracking for multi-step prompts ──────
+  const userStates = new Map(); // chatId -> { action: 'DEPOSIT'|'WITHDRAW', method: 'telebirr'|'cbe' }
+
   // ─── Main Menu button handlers ───────────────────────────────
   bot.on('message', async (msg) => {
-    if (!msg.text || msg.contact) return;
-    if (msg.text.startsWith('/')) return;
+    if (msg.contact) return;
+    if (msg.text && msg.text.startsWith('/')) return;
 
     const chatId     = msg.chat.id;
     const telegramId = String(msg.from.id);
-    const text       = msg.text.trim();
+    const text       = (msg.text || '').trim();
 
     const user = await getRegisteredUser(telegramId);
+    if (!user) {
+      await promptRegister(chatId);
+      return;
+    }
 
-    // ── 🎮 Play Bingo ─────────────────────────────────────────
+    // Check if user is in an active conversational step (Deposit / Withdraw input)
+    const activeState = userStates.get(chatId);
+    if (activeState) {
+      // 1. DEPOSIT STEP: User sent payment SMS / transaction reference
+      if (activeState.action === 'DEPOSIT') {
+        userStates.delete(chatId);
+
+        try {
+          // Parse amount if present in text, otherwise 0 pending admin review
+          const amountMatch = text.match(/(?:ETB|Birr|birr|\$)?\s*(\d+(?:\.\d+)?)/);
+          const parsedAmount = amountMatch ? parseFloat(amountMatch[1]) : 0;
+
+          await supabase.from('deposits').insert({
+            user_id:         user.id,
+            amount:          parsedAmount,
+            payment_method:  activeState.method,
+            transaction_ref: text,
+            status:          'pending',
+          });
+
+          await safeSend(chatId,
+            `✅ *Deposit Submitted!*\n\n` +
+            `Your payment reference has been sent to admin for verification.\n` +
+            `Your balance will be credited within minutes. 🎮`,
+            {
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [[{ text: '🎮 Play Bingo', web_app: { url: WEB_APP_URL } }]],
+              },
+            }
+          );
+        } catch (err) {
+          console.error('[TelegramBot] Deposit submission error:', err.message);
+          await safeSend(chatId, '⚠️ Error submitting deposit. Please try again later.', MAIN_MENU_OPTS);
+        }
+        return;
+      }
+
+      // 2. WITHDRAW STEP: User sent "Amount AccountNumber"
+      if (activeState.action === 'WITHDRAW') {
+        const parts = text.split(/\s+/);
+        const reqAmount = parseFloat(parts[0]);
+        const accountNumber = parts.slice(1).join(' ').trim();
+
+        const freshUser = await get('SELECT * FROM users WHERE id = ?', [user.id]);
+        const bal   = parseFloat(freshUser?.balance) || 0;
+        const withB = Math.min(parseFloat(freshUser?.withdrawable_balance) || 0, bal);
+
+        if (isNaN(reqAmount) || reqAmount < 50 || !accountNumber) {
+          await safeSend(chatId,
+            `❌ *Invalid format.*\n\n` +
+            `Please provide the amount (min 50 ETB) and your account number.\n\n` +
+            `*Example:* \`100 0912345678\`\n\n` +
+            `Or tap Cancel below:`,
+            {
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [[{ text: '❌ Cancel', callback_data: 'cancel_action' }]],
+              },
+            }
+          );
+          return;
+        }
+
+        if (reqAmount > withB) {
+          userStates.delete(chatId);
+          await safeSend(chatId,
+            `❌ *Insufficient withdrawable balance.*\n\n` +
+            `Requested: *${reqAmount.toFixed(2)} ETB*\n` +
+            `Available: *${withB.toFixed(2)} ETB*\n\n` +
+            `Keep playing and win more! 🎮`,
+            MAIN_MENU_OPTS
+          );
+          return;
+        }
+
+        userStates.delete(chatId);
+
+        try {
+          // Deduct from user balance
+          const newBal  = bal - reqAmount;
+          const newWith = withB - reqAmount;
+          await supabase.from('users').update({
+            balance:              newBal,
+            withdrawable_balance: newWith,
+          }).eq('id', user.id);
+
+          await supabase.from('withdrawals').insert({
+            user_id:        user.id,
+            amount:         reqAmount,
+            payment_method: activeState.method,
+            account_number: accountNumber,
+            status:         'pending',
+          });
+
+          // Socket push
+          if (gameEngine.io) {
+            gameEngine.io.emit('balance_updated', {
+              userId:              user.id,
+              newBalance:          newBal,
+              withdrawableBalance: newWith,
+            });
+          }
+
+          await safeSend(chatId,
+            `✅ *Withdrawal Request Submitted!*\n\n` +
+            `*Amount:* ${reqAmount.toFixed(2)} ETB\n` +
+            `*Account:* \`${accountNumber}\` (${activeState.method.toUpperCase()})\n\n` +
+            `Your request is being processed by admin. 💸`,
+            MAIN_MENU_OPTS
+          );
+        } catch (err) {
+          console.error('[TelegramBot] Withdrawal submit error:', err.message);
+          await safeSend(chatId, '⚠️ Error processing withdrawal. Please try again.', MAIN_MENU_OPTS);
+        }
+        return;
+      }
+    }
+
+    // ── 🎮 Play Bingo (Fallback text handler) ─────────────────
     if (text === '🎮 Play Bingo') {
-      if (!user) { await promptRegister(chatId); return; }
-
-      const state = require('./gameEngine').getPublicState();
-      const statusLine = state.status === 'DRAWING'
-        ? `🔴 *Game in progress!* ${state.calledNumbers.length}/75 balls drawn`
-        : state.status === 'COUNTDOWN'
-        ? `⏱ *Next round starts in ${state.secondsLeft}s* — ${state.purchasedTickets.length} cartela(s) sold`
-        : `✅ *Lobby open* — be the first to pick a cartela!`;
-
       await safeSend(chatId,
         `🎮 *BingoX Live Game*\n\n` +
-        `${statusLine}\n\n` +
-        `💰 Ticket price: *10 ETB*\n` +
-        `🏆 Prize: *80% of the pool*\n` +
-        `🃏 Max 2 cartelas per round\n\n` +
-        `Tap below to open the game and pick your cartela 👇`,
-        withMenuAndBtn('🎮 Open Game & Play')
+        `Tap the button below to launch the live Bingo lobby and pick your cartelas 👇`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '🎮 Play Now', web_app: { url: WEB_APP_URL } }]],
+          },
+        }
       );
       return;
     }
 
     // ── 💰 Balance / Wallet ───────────────────────────────────
-    if (text === '💰 Balance / Wallet') {
-      if (!user) { await promptRegister(chatId); return; }
-
-      const bal   = parseFloat(user.balance) || 0;
-      const withB = Math.min(parseFloat(user.withdrawable_balance) || 0, bal);
-      const bonus = Math.max(0, bal - withB);
+    if (text === '💰 Balance / Wallet' || text === '/balance') {
+      const freshUser = await get('SELECT * FROM users WHERE id = ?', [user.id]);
+      const bal   = parseFloat(freshUser?.balance) || 0;
+      const withB = Math.min(parseFloat(freshUser?.withdrawable_balance) || 0, bal);
 
       await safeSend(chatId,
-        `💰 *Your BingoX Wallet*\n\n` +
-        `┌─────────────────────────\n` +
-        `│ Total balance:    *${bal.toFixed(2)} ETB*\n` +
-        `│ Withdrawable:     *${withB.toFixed(2)} ETB*\n` +
-        `│ Bonus (play-only): *${bonus.toFixed(2)} ETB*\n` +
-        `└─────────────────────────\n\n` +
-        `Tap below to manage deposits & withdrawals in the app 👇`,
-        withMenuAndBtn('💳 Open Wallet')
+        `💰 *Balance*\n\n` +
+        `*Total Balance:* ${bal.toFixed(2)} ETB\n` +
+        `*Withdrawable:* ${withB.toFixed(2)} ETB\n\n` +
+        `Choose an option:`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '💳 Deposit',  callback_data: 'menu_deposit' },
+                { text: '💸 Withdraw', callback_data: 'menu_withdraw' },
+              ]
+            ],
+          },
+        }
       );
       return;
     }
 
     // ── 💳 Deposit ────────────────────────────────────────────
-    if (text === '💳 Deposit') {
-      if (!user) { await promptRegister(chatId); return; }
-
-      await safeSend(chatId,
-        `💳 *Deposit Funds*\n\n` +
-        `Minimum deposit: *10 ETB*\n\n` +
-        `Accepted payment methods:\n` +
-        `  📱 *TeleBirr* — 0979827836\n` +
-        `  🏦 *CBE* — 100023456789\n\n` +
-        `*How to deposit:*\n` +
-        `1️⃣ Send ETB to the number/account above\n` +
-        `2️⃣ Open the wallet in the game\n` +
-        `3️⃣ Enter amount & your transaction reference\n` +
-        `4️⃣ Admin approves within minutes ✅\n\n` +
-        `Tap below to open the deposit form 👇`,
-        withMenuAndBtn('💳 Deposit Now')
-      );
+    if (text === '💳 Deposit' || text === '/deposit') {
+      await sendDepositMenu(chatId);
       return;
     }
 
     // ── 💸 Withdraw ───────────────────────────────────────────
-    if (text === '💸 Withdraw') {
-      if (!user) { await promptRegister(chatId); return; }
-
-      const bal   = parseFloat(user.balance) || 0;
-      const withB = Math.min(parseFloat(user.withdrawable_balance) || 0, bal);
-
-      await safeSend(chatId,
-        `💸 *Withdraw Winnings*\n\n` +
-        `Your withdrawable balance: *${withB.toFixed(2)} ETB*\n` +
-        `Minimum withdrawal: *50 ETB*\n\n` +
-        `Supported methods:\n` +
-        `  📱 *TeleBirr*\n` +
-        `  🏦 *CBE*\n\n` +
-        `*How to withdraw:*\n` +
-        `1️⃣ Open the wallet in the game\n` +
-        `2️⃣ Enter amount & your account number\n` +
-        `3️⃣ Submit — funds sent within minutes ✅\n\n` +
-        `${withB < 50 ? `⚠️ You need at least *50 ETB* withdrawable. Play more to earn!\n\n` : ''}` +
-        `Tap below to open the withdrawal form 👇`,
-        withMenuAndBtn('💸 Withdraw Now')
-      );
+    if (text === '💸 Withdraw' || text === '/withdraw') {
+      await sendWithdrawMenu(chatId, user);
       return;
     }
 
     // ── 👥 Referral ───────────────────────────────────────────
-    if (text === '👥 Referral') {
-      if (!user) { await promptRegister(chatId); return; }
-
-      const code       = user.referral_code || '—';
-      const inviteLink = `https://t.me/bingox2019_bot?start=ref_${code}`;
-
-      let total = 0;
-      try {
-        const { count } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('referral_code', code);
-        total = count || 0;
-      } catch {}
-
-      await safeSend(chatId,
-        `👥 *Your Referral Dashboard*\n\n` +
-        `🔑 Your code: \`${code}\`\n\n` +
-        `🔗 *Your invite link:*\n${inviteLink}\n\n` +
-        `📊 Total referrals: *${total}*\n` +
-        `💰 Total earned:    *${total * 5} ETB*\n\n` +
-        `Share your link — earn *5 ETB* for every friend who registers and plays! 🎉`,
-        withMenuAndBtn('👥 View Referrals in App')
-      );
+    if (text === '👥 Referral' || text === '/referral') {
+      await sendReferralMenu(chatId, user);
       return;
     }
 
     // ── Unrecognised text ─────────────────────────────────────
+    await safeSend(chatId, 'Use the menu buttons below 👇', MAIN_MENU_OPTS);
+  });
+
+  // ─── Inline Callback Query Router ────────────────────────────
+  bot.on('callback_query', async (query) => {
+    const chatId     = query.message?.chat?.id;
+    const telegramId = String(query.from.id);
+    const data       = query.data;
+
+    try {
+      await bot.answerCallbackQuery(query.id);
+    } catch {}
+
+    if (!chatId) return;
+
+    const user = await getRegisteredUser(telegramId);
     if (!user) {
       await promptRegister(chatId);
-    } else {
-      await safeSend(chatId, 'Use the menu buttons below 👇', MAIN_MENU_OPTS);
+      return;
+    }
+
+    // 1. Menu shortcuts
+    if (data === 'menu_deposit') {
+      await sendDepositMenu(chatId);
+      return;
+    }
+    if (data === 'menu_withdraw') {
+      await sendWithdrawMenu(chatId, user);
+      return;
+    }
+
+    // 2. Deposit Method Selection
+    if (data === 'deposit_telebirr') {
+      userStates.set(chatId, { action: 'DEPOSIT', method: 'telebirr' });
+      await safeSend(chatId,
+        `💳 *TELEBIRR DEPOSIT*\n` +
+        `Minimum deposit: 10 ETB\n\n` +
+        `Send your payment to:\n` +
+        `📱 \`0979827836\`\n\n` +
+        `Then send your payment SMS or transaction reference here.`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '❌ Cancel', callback_data: 'cancel_action' }]],
+          },
+        }
+      );
+      return;
+    }
+
+    if (data === 'deposit_cbe') {
+      userStates.set(chatId, { action: 'DEPOSIT', method: 'cbe' });
+      await safeSend(chatId,
+        `💳 *CBE BIRR DEPOSIT*\n` +
+        `Minimum deposit: 10 ETB\n\n` +
+        `Send your payment to:\n` +
+        `🏦 \`100023456789\`\n\n` +
+        `Then send your payment SMS or transaction reference here.`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '❌ Cancel', callback_data: 'cancel_action' }]],
+          },
+        }
+      );
+      return;
+    }
+
+    // 3. Withdraw Method Selection
+    if (data === 'withdraw_telebirr' || data === 'withdraw_cbe') {
+      const method = data === 'withdraw_telebirr' ? 'telebirr' : 'cbe';
+      const freshUser = await get('SELECT * FROM users WHERE id = ?', [user.id]);
+      const bal   = parseFloat(freshUser?.balance) || 0;
+      const withB = Math.min(parseFloat(freshUser?.withdrawable_balance) || 0, bal);
+
+      if (withB < 50) {
+        await safeSend(chatId,
+          `❌ *Insufficient balance.*\n\n` +
+          `Your balance: *${withB.toFixed(2)} ETB*\n` +
+          `Minimum amount: *50 ETB*\n` +
+          `Keep playing and win more! 🎮`,
+          {
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [[{ text: '🎮 Play Bingo', web_app: { url: WEB_APP_URL } }]],
+            },
+          }
+        );
+        return;
+      }
+
+      userStates.set(chatId, { action: 'WITHDRAW', method });
+      const methodLabel = method === 'telebirr' ? 'TELEBIRR' : 'CBE BIRR';
+
+      await safeSend(chatId,
+        `💸 *${methodLabel} WITHDRAWAL*\n\n` +
+        `Available to withdraw: *${withB.toFixed(2)} ETB*\n` +
+        `Minimum withdrawal: *50 ETB*\n\n` +
+        `Please send the **amount** and your **account/phone number**:\n` +
+        `Format: \`Amount AccountNumber\`\n` +
+        `Example: \`100 0912345678\``,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '❌ Cancel', callback_data: 'cancel_action' }]],
+          },
+        }
+      );
+      return;
+    }
+
+    // 4. Cancel Action
+    if (data === 'cancel_action') {
+      userStates.delete(chatId);
+      await safeSend(chatId, '❌ Action cancelled.', MAIN_MENU_OPTS);
+      return;
     }
   });
+
+  // ─── Menu Helpers ─────────────────────────────────────────────
+
+  async function sendDepositMenu(chatId) {
+    await safeSend(chatId,
+      `💳 *Deposit*\n\nChoose your payment method:`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '📱 Telebirr',  callback_data: 'deposit_telebirr' },
+              { text: '🏦 CBE Birr',  callback_data: 'deposit_cbe' },
+            ],
+            [{ text: '❌ Cancel', callback_data: 'cancel_action' }]
+          ],
+        },
+      }
+    );
+  }
+
+  async function sendWithdrawMenu(chatId, user) {
+    const freshUser = await get('SELECT * FROM users WHERE id = ?', [user.id]);
+    const bal   = parseFloat(freshUser?.balance) || 0;
+    const withB = Math.min(parseFloat(freshUser?.withdrawable_balance) || 0, bal);
+    const minWithdraw = 50;
+
+    if (withB < minWithdraw) {
+      await safeSend(chatId,
+        `❌ *Insufficient balance.*\n\n` +
+        `*Your balance:* ${withB.toFixed(2)} ETB\n` +
+        `*Minimum amount:* ${minWithdraw} ETB\n` +
+        `Keep playing and win more! 🎮`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '🎮 Play Now', web_app: { url: WEB_APP_URL } }]],
+          },
+        }
+      );
+      return;
+    }
+
+    await safeSend(chatId,
+      `💸 *Withdraw*\n\n` +
+      `Available to withdraw:\n*${withB.toFixed(2)} ETB*\n` +
+      `Minimum withdrawal: *${minWithdraw} ETB*\n\n` +
+      `Choose payment method:`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '📱 Telebirr', callback_data: 'withdraw_telebirr' },
+              { text: '🏦 CBE Birr', callback_data: 'withdraw_cbe' },
+            ],
+            [{ text: '❌ Cancel', callback_data: 'cancel_action' }]
+          ],
+        },
+      }
+    );
+  }
+
+  async function sendReferralMenu(chatId, user) {
+    const code = user.referral_code || '—';
+    const inviteLink = `https://t.me/bingox2019_bot?start=ref_${code}`;
+
+    let total = 0;
+    try {
+      const { count } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('referral_code', code);
+      total = count || 0;
+    } catch {}
+
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('🎮 Join me on BingoX and win real ETB prizes! 🎯')}`;
+
+    await safeSend(chatId,
+      `👥 *REFERRAL*\n\n` +
+      `Invite your friends and earn rewards! 🔥\n` +
+      `*Friends invited:* ${total}\n` +
+      `*Total earned:* ${total * 5} ETB\n\n` +
+      `Share your link 👇\n\`${inviteLink}\``,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔗 SHARE REFERRAL LINK', url: shareUrl }],
+            [{ text: '🎮 Play Bingo', web_app: { url: WEB_APP_URL } }]
+          ],
+        },
+      }
+    );
+  }
 
   /** Ask unregistered user to share phone */
   async function promptRegister(chatId) {
