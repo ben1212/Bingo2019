@@ -64,7 +64,7 @@ function _startBot() {
    */
   const MAIN_KEYBOARD = {
     keyboard: [
-      [{ text: '🎮 Play Bingo' }],
+      [{ text: '🎮 Play Bingo', web_app: { url: WEB_APP_URL } }],
       [{ text: '💰 Balance / Wallet' }, { text: '💳 Deposit' }],
       [{ text: '💸 Withdraw' },         { text: '👥 Referral' }],
     ],
@@ -79,14 +79,12 @@ function _startBot() {
   };
 
   /**
-   * Reply options that show BOTH an inline open-game button AND keep
-   * the main menu keyboard visible underneath.
+   * Reply options with an inline open-game WebApp button.
    */
   function withMenuAndBtn(label) {
     return {
       parse_mode: 'Markdown',
       reply_markup: {
-        ...MAIN_KEYBOARD,
         inline_keyboard: [[{ text: label || '🎮 Open BingoX', web_app: { url: WEB_APP_URL } }]],
       },
     };
