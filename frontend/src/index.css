@@ -1,0 +1,476 @@
+/* ============================================================
+   BINGOX — Premium Telegram Midnight Gaming Design System
+   Rich, high-contrast, immersive dark gaming aesthetic
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;400;500;600;700;800;900&family=Noto+Sans+Ethiopic:wght@400;600;700;900&display=swap');
+
+:root {
+  /* Deep Midnight Surfaces */
+  --bg-main: #080d1a;
+  --bg-card: #111a2e;
+  --bg-card-elevated: #16223b;
+  --bg-subtle: rgba(255, 255, 255, 0.04);
+  --bg-card-hover: #1c2b4a;
+
+  /* Primary Electric Accent */
+  --primary: #0284c7;
+  --primary-light: #38bdf8;
+  --primary-glow: rgba(56, 189, 248, 0.35);
+
+  /* Status Accents */
+  --green: #10b981;
+  --green-light: #34d399;
+  --green-glow: rgba(16, 185, 129, 0.35);
+
+  --amber: #f59e0b;
+  --amber-light: #fbbf24;
+  --amber-glow: rgba(245, 158, 11, 0.35);
+
+  --red: #ef4444;
+  --red-light: #f87171;
+  --red-glow: rgba(239, 68, 68, 0.35);
+
+  --purple: #8b5cf6;
+  --purple-light: #a78bfa;
+  --purple-glow: rgba(139, 92, 246, 0.35);
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.14);
+  --border-primary: rgba(56, 189, 248, 0.3);
+
+  /* Typography */
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Premium Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.6);
+  --shadow-primary: 0 4px 16px rgba(2, 132, 199, 0.4);
+
+  --font: 'Bricolage Grotesque', 'Noto Sans Ethiopic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Universal Font Enforcement (Game, Wallet, Tasks, Invite, Profile, Navigation, Modals, Cards, Buttons, Bingo Balls) ── */
+*, *::before, *::after,
+html, body, #root,
+button, input, select, textarea, optgroup, option,
+h1, h2, h3, h4, h5, h6, p, span, div, a, label, table, th, td,
+.clean-card, .btn-primary, .cartella-grid-item, .cartella-card,
+.cartella-header, .cartella-cell, .master-board, .master-board-header,
+.master-board-cell, .bingo-3d-ball, .gameplay-layout {
+  box-sizing: border-box;
+  font-family: var(--font) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-main);
+}
+
+body {
+  background-color: var(--bg-main);
+  background-image:
+    radial-gradient(ellipse at 50% -10%, rgba(2, 132, 199, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 10% 40%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: 72px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+
+/* ── Clean Card ── */
+.clean-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Primary Button ── */
+.btn-primary {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-weight: 800;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  min-height: 46px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.btn-primary:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+}
+
+/* ============================================================
+   CARTELA SELECTION GRID (200 TILES, 8 PER ROW)
+   ============================================================ */
+.cartella-grid-container {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cartella-grid-item {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: clamp(11px, 2.8vw, 13.5px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #131f38;
+  color: #f1f5f9;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.cartella-grid-item:hover:not(.taken):not(.disabled) {
+  border-color: #38bdf8;
+  background: #1a2a4c;
+  color: #38bdf8;
+}
+
+.cartella-grid-item:active {
+  transform: scale(0.92);
+}
+
+.cartella-grid-item.mine {
+  background: linear-gradient(135deg, #0284c7 0%, #0891b2 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.55);
+  font-weight: 900;
+  transform: scale(1.05);
+  z-index: 2;
+}
+
+.cartella-grid-item.taken {
+  background: rgba(15, 23, 42, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
+  color: #475569 !important;
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.cartella-grid-item.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   CARTELLA CARD (in gameplay)
+   ============================================================ */
+/* ═══════════════════════════════════════════════════
+   BINGOX CARD — Premium Dark Card Design
+   ═══════════════════════════════════════════════════ */
+.cartella-card {
+  background: linear-gradient(160deg, #0d1829 0%, #0a1220 100%);
+  border: 1.5px solid rgba(250, 204, 21, 0.25);
+  border-radius: 14px;
+  padding: 0;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.04);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.cartella-card.near-bingo {
+  border-color: #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.45), 0 8px 28px rgba(0,0,0,0.5);
+}
+
+/* Gold gradient header strip with B-I-N-G-O */
+.cartella-header {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  text-align: center;
+  font-weight: 900;
+  font-size: 14px;
+  flex-shrink: 0;
+  letter-spacing: 1px;
+  padding: 5px 4px;
+}
+
+/* BINGO column colored letters on dark header */
+.cartella-header div:nth-child(1) { color: #f87171; text-shadow: 0 0 8px rgba(248,113,113,0.5); }
+.cartella-header div:nth-child(2) { color: #fbbf24; text-shadow: 0 0 8px rgba(251,191,36,0.5); }
+.cartella-header div:nth-child(3) { color: #34d399; text-shadow: 0 0 8px rgba(52,211,153,0.5); }
+.cartella-header div:nth-child(4) { color: #60a5fa; text-shadow: 0 0 8px rgba(96,165,250,0.5); }
+.cartella-header div:nth-child(5) { color: #c084fc; text-shadow: 0 0 8px rgba(192,132,252,0.5); }
+
+.cartella-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  background: rgba(5, 8, 18, 0.7);
+  padding: 5px;
+  border-radius: 0 0 12px 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cartella-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(11px, 3.2vw, 15px);
+  font-weight: 800;
+  border-radius: 5px;
+  background: #101d36;
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.cartella-cell.free {
+  background: linear-gradient(135deg, rgba(251,191,36,0.2) 0%, rgba(245,158,11,0.1) 100%);
+  color: #fbbf24;
+  font-size: clamp(7px, 1.8vw, 9.5px);
+  border-color: rgba(251, 191, 36, 0.45);
+  font-weight: 900;
+  text-shadow: 0 0 6px rgba(251,191,36,0.4);
+}
+
+.cartella-cell.daubed {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+  color: #ffffff !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.45);
+  transform: scale(1.04);
+  z-index: 1;
+  animation: daubPop 0.2s ease;
+}
+
+.cartella-cell.winning {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.65) !important;
+  transform: scale(1.06) !important;
+  z-index: 3;
+}
+
+/* ── Compact variant ── */
+.cartella-card--compact {
+  border-radius: 10px;
+  height: auto;
+  width: 100%;
+}
+
+.cartella-card--compact .cartella-header {
+  font-size: clamp(10px, 2.2vw, 12px);
+  padding: 3px 2px;
+  letter-spacing: 0.5px;
+}
+
+.cartella-card--compact .cartella-grid {
+  gap: 2px;
+  padding: 3px;
+  border-radius: 0 0 8px 8px;
+}
+
+.cartella-card--compact .cartella-cell {
+  font-size: clamp(10px, 2.2vw, 12.5px);
+  border-radius: 4px;
+  aspect-ratio: 1;
+}
+
+
+
+/* ============================================================
+   MASTER BOARD
+   ============================================================ */
+.master-board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.master-board-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 100%;
+  min-height: 0;
+}
+
+.master-board-header {
+  text-align: center;
+  font-weight: 800;
+  font-size: 9px;
+  padding: 3px 0;
+  border-radius: 4px;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.master-board-header.col-b { color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); }
+.master-board-header.col-i { color: #f59e0b; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); }
+.master-board-header.col-n { color: #10b981; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); }
+.master-board-header.col-g { color: #38bdf8; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); }
+.master-board-header.col-o { color: #a855f7; background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); }
+
+.master-board-cells {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5px;
+  flex: 1;
+  min-height: 0;
+}
+
+.master-board-cell {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8.5px;
+  font-weight: 700;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #64748b;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  line-height: 1;
+  transition: all 0.15s ease;
+  min-height: 0;
+}
+
+.master-board-cell.called {
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.master-board-cell.called.col-b { background: #ef4444; border-color: #f87171; box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
+.master-board-cell.called.col-i { background: #f59e0b; border-color: #fbbf24; color: #000; box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); }
+.master-board-cell.called.col-n { background: #10b981; border-color: #34d399; box-shadow: 0 0 6px rgba(16, 185, 129, 0.5); }
+.master-board-cell.called.col-g { background: #38bdf8; border-color: #7dd3fc; color: #000; box-shadow: 0 0 6px rgba(56, 189, 248, 0.5); }
+.master-board-cell.called.col-o { background: #8b5cf6; border-color: #c084fc; box-shadow: 0 0 6px rgba(139, 92, 246, 0.5); }
+
+/* ============================================================
+   GAMEPLAY LAYOUT
+   ============================================================ */
+.gameplay-layout {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.gameplay-masterboard {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #111a2e;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.gameplay-cartella {
+  flex: 0 0 auto;
+  width: 50%;
+  min-width: 0;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ============================================================
+   3D BINGO SPHERE BALL
+   ============================================================ */
+.bingo-3d-ball {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), inset 0 -3px 6px rgba(0, 0, 0, 0.4);
+  animation: ballPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  margin: 2px 0 6px;
+  user-select: none;
+}
+
+@keyframes ballPop {
+  0% { transform: scale(0.3); opacity: 0; }
+  70% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes daubPop {
+  0% { transform: scale(0.6); }
+  70% { transform: scale(1.18); }
+  100% { transform: scale(1.03); }
+}
+
+@keyframes radarBeacon {
+  0% { transform: scale(0.9); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.5; }
+  100% { transform: scale(0.9); opacity: 1; }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .gameplay-layout { gap: 6px; }
+  .gameplay-masterboard { flex: 1 1 50%; padding: 4px; }
+  .gameplay-cartella { flex: 0 0 auto; width: 48%; max-width: 220px; }
+}
