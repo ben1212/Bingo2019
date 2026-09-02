@@ -352,9 +352,17 @@ app.get('/api/settings', async (req, res) => {
   });
 });
 
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', service: 'BingoX Backend API', version: '2.0.0' });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 // Admin Routes
 app.use('/api/admin', authenticateToken, adminRoutes);
 
-server.listen(PORT, () => {
-  console.log('🎯 BingoX Backend Server running on port ' + PORT);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🎯 BingoX Backend Server running on http://0.0.0.0:${PORT}`);
 });

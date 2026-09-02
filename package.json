@@ -1,0 +1,8 @@
+﻿{
+  "name": "bingo2019-root",
+  "version": "2.0.0",
+  "scripts": {
+    "start": "cd backend && node src/server.js",
+    "postinstall": "cd backend && npm install"
+  }
+}
