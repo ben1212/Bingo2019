@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // audioAlerts.js — Lightweight Web Audio API Chimes for Admin
 // Zero external files, zero network latency, mobile-friendly
 // ============================================================
