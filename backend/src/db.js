@@ -1,16 +1,20 @@
+const path = require('path');
 require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const SUPABASE_SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('[DB] FATAL: Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment variables!');
+  console.error('[DB] WARNING: Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment variables!');
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+const supabase = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    })
+  : null;
 
 // SQL-compatible helper for single record
 async function get(query, params = []) {
