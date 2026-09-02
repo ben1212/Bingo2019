@@ -174,7 +174,9 @@ export default function App() {
 
     function startTelegramDetection() {
       let attempts = 0;
-      const MAX_ATTEMPTS = 30; // 30 * 100ms = 3.0 seconds
+      const MAX_ATTEMPTS = 20; // 20 * 100ms = 2.0s
+      let retryCount = 0;
+      const MAX_RETRIES = 3;
 
       const checkTelegram = () => {
         attempts++;
@@ -191,34 +193,52 @@ export default function App() {
 
         // Telegram context detected!
         if (initData || tgUser || telegramId) {
-          apiFetch('/api/auth/telegram-webapp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              initData: initData || '',
-              user: tgUser || null,
-              telegramId: telegramId || undefined
+          const tryAuth = () => {
+            apiFetch('/api/auth/telegram-webapp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                initData: initData || '',
+                user: tgUser || null,
+                telegramId: telegramId || undefined
+              })
             })
-          })
-            .then(r => r.json())
-            .then(data => {
-              if (data.token && data.user) {
-                localStorage.setItem('bingo_token', data.token);
-                setToken(data.token);
-                setUser({ ...data.user, balance: Number(data.user.balance) || 0 });
-                setAuthStatus('authenticated');
-                setCurrentView('navbar');
-              } else if (data.requiresPhoneRegistration) {
-                setGateMessage(data.message || '');
-                setAuthStatus('needs_phone');
-              } else {
-                setGateMessage(data.error || 'Authentication error');
-                setAuthStatus('needs_phone');
-              }
-            })
-            .catch(() => {
-              setAuthStatus('not_telegram');
-            });
+              .then(async r => {
+                const data = await r.json().catch(() => ({}));
+                if (data.token && data.user) {
+                  localStorage.setItem('bingo_token', data.token);
+                  setToken(data.token);
+                  setUser({ ...data.user, balance: Number(data.user.balance) || 0 });
+                  setAuthStatus('authenticated');
+                  setCurrentView('navbar');
+                } else if (data.requiresPhoneRegistration) {
+                  setGateMessage(data.message || '');
+                  setAuthStatus('needs_phone');
+                } else if (r.status === 403 && data.error) {
+                  setGateMessage(data.error);
+                  setAuthStatus('needs_phone');
+                } else {
+                  if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    setTimeout(tryAuth, 1200 * retryCount);
+                  } else {
+                    setGateMessage(data.error || 'Unable to connect. Please check your connection.');
+                    setAuthStatus('error');
+                  }
+                }
+              })
+              .catch(() => {
+                if (retryCount < MAX_RETRIES) {
+                  retryCount++;
+                  setTimeout(tryAuth, 1200 * retryCount);
+                } else {
+                  setGateMessage('Server connection error. Please tap Retry.');
+                  setAuthStatus('error');
+                }
+              });
+          };
+
+          tryAuth();
           return;
         }
 
@@ -470,33 +490,52 @@ export default function App() {
     return <PhoneRegistrationRequired message={gateMessage} />;
   }
 
+  // Connection or Auth Error — provide friendly retry UI
+  if (authStatus === 'error') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#040711',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        textAlign: 'center',
+        fontFamily: "'Bricolage Grotesque', sans-serif"
+      }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚡</div>
+        <h2 style={{ color: '#fff', fontSize: '18px', fontWeight: '800', margin: '0 0 8px' }}>
+          Connecting to Game Server
+        </h2>
+        <p style={{ color: '#94a3b8', fontSize: '13px', maxWidth: '280px', margin: '0 0 20px', lineHeight: 1.4 }}>
+          {gateMessage || 'Unable to connect to the game server. Tap retry to reconnect.'}
+        </p>
+        <button
+          onClick={() => {
+            setAuthStatus('loading');
+            authAttemptedRef.current = false;
+            window.location.reload();
+          }}
+          style={{
+            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+            border: 'none',
+            color: '#fff',
+            padding: '10px 24px',
+            borderRadius: '10px',
+            fontSize: '14px',
+            fontWeight: '800',
+            cursor: 'pointer'
+          }}
+        >
+          🔄 Tap to Retry
+        </button>
+      </div>
+    );
+  }
 
   // Not opened via Telegram — do one final live check before showing the redirect screen
-  // (Telegram WebApp sometimes injects late, so we verify once more before giving up)
   if (authStatus === 'not_telegram') {
-    const wa = typeof window !== 'undefined' ? window.Telegram?.WebApp : null;
-    const hasTgContext = !!(wa?.initData || wa?.initDataUnsafe?.user);
-    if (hasTgContext && !authAttemptedRef.current) {
-      // Race condition: Telegram injected AFTER the retry loop ended — restart auth
-      authAttemptedRef.current = false;
-      setAuthStatus('loading');
-    }
-    if (hasTgContext) {
-      // Still in Telegram but auth somehow set not_telegram — go back to loading
-      return (
-        <div style={{
-          minHeight: '100vh', background: '#040711',
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div style={{
-            width: '36px', height: '36px', borderRadius: '50%',
-            border: '3px solid #1e293b', borderTopColor: '#38bdf8',
-            animation: 'spin 0.7s linear infinite'
-          }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
-      );
-    }
 
     return (
       <div style={{

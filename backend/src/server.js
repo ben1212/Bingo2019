@@ -18,7 +18,13 @@ const server = http.createServer(app);
 const JWT_SECRET = (process.env.JWT_SECRET || 'bingox-secret-2019-production-key').trim();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: '*', credentials: true }));
+app.use(cors({
+  origin: true, // Reflects request origin so credentials & authorization headers are allowed by browser CORS policy
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
