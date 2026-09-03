@@ -116,7 +116,7 @@ function PhoneRegistrationRequired({ message }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('bingo_token') || null);
-  const [currentView, setCurrentView] = useState('navbar');
+  const [currentView, setCurrentView] = useState('lobby');
 
   const [gameState, setGameState] = useState(null);
   const [countdown, setCountdown] = useState(null);
@@ -160,7 +160,7 @@ export default function App() {
             setToken(cachedToken);
             setUser({ ...d.user, balance: Number(d.user.balance) || 0 });
             setAuthStatus('authenticated');
-            setCurrentView('navbar');
+            setCurrentView('lobby');
             return;
           }
           localStorage.removeItem('bingo_token');
@@ -210,7 +210,7 @@ export default function App() {
                   setToken(data.token);
                   setUser({ ...data.user, balance: Number(data.user.balance) || 0 });
                   setAuthStatus('authenticated');
-                  setCurrentView('navbar');
+                  setCurrentView('lobby');
                 } else if (data.requiresPhoneRegistration) {
                   setGateMessage(data.message || '');
                   setAuthStatus('needs_phone');
@@ -398,7 +398,7 @@ export default function App() {
     localStorage.removeItem('bingo_token');
     setAuthStatus('loading');
     authAttemptedRef.current = false;
-    setCurrentView('navbar');
+    setCurrentView('lobby');
     window.location.reload();
   };
 
@@ -449,15 +449,15 @@ export default function App() {
       currentView === 'gameplay' &&
       (gameState?.status === 'COUNTDOWN' || gameState?.status === 'WAITING')
     ) {
-      // Auto-return to navbar/lobby when game finishes
-      setCurrentView('navbar');
+      // Auto-return to lobby when game finishes
+      setCurrentView('lobby');
     }
   }, [gameState?.status, currentView, userTickets.length]);
 
   const handleBackToLobby = () => {
     if (isGameLocked) return;
     gameEndedRef.current = true;
-    setCurrentView('navbar');
+    setCurrentView('lobby');
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -737,7 +737,7 @@ export default function App() {
         </div>
       )}
 
-      {(currentView === 'navbar' || currentView === 'lobby') && (
+      {currentView === 'lobby' && (
         <LobbyView
           user={user}
           gameState={gameState}

@@ -10,12 +10,12 @@ export default function Navbar({
 }) {
   const navItems = [
     {
-      id: 'navbar',
+      id: 'lobby',
       label: 'Game',
       icon: Gamepad2,
       activeColor: '#38bdf8',
       activeBg: 'rgba(56, 189, 248, 0.15)',
-      viewMatches: ['navbar', 'lobby', 'game', 'gameplay']
+      viewMatches: ['lobby', 'game', 'gameplay']
     },
     {
       id: 'wallet',
@@ -81,7 +81,7 @@ export default function Navbar({
             cursor: isGameLocked ? 'default' : 'pointer'
           }}
           onClick={() => {
-            if (!isGameLocked) setCurrentView('navbar');
+            if (!isGameLocked) setCurrentView('lobby');
           }}
         >
           <div
