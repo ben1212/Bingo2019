@@ -150,6 +150,12 @@ export default function App() {
     if (authAttemptedRef.current) return;
     authAttemptedRef.current = true;
 
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('guest') || urlParams.has('demo') || urlParams.has('play')) {
+      handlePlayAsGuest();
+      return;
+    }
+
     // 1. FAST PATH: Check cached token first
     const cachedToken = localStorage.getItem('bingo_token');
     if (cachedToken) {
@@ -402,6 +408,20 @@ export default function App() {
     }
   }, [token, authStatus]);
 
+  const handlePlayAsGuest = () => {
+    const guestId = 'guest_' + Math.floor(1000 + Math.random() * 9000);
+    setUser({
+      id: guestId,
+      username: 'Player_' + guestId.slice(-4),
+      first_name: 'Guest Player',
+      balance: 100,
+      withdrawableBalance: 0,
+      isGuest: true
+    });
+    setAuthStatus('authenticated');
+    setCurrentView('lobby');
+  };
+
   const handleLogout = () => {
     setUser(null);
     setToken(null);
@@ -521,25 +541,42 @@ export default function App() {
         <p style={{ color: '#94a3b8', fontSize: '13px', maxWidth: '280px', margin: '0 0 20px', lineHeight: 1.4 }}>
           {gateMessage || 'Unable to connect to the game server. Tap retry to reconnect.'}
         </p>
-        <button
-          onClick={() => {
-            setAuthStatus('loading');
-            authAttemptedRef.current = false;
-            window.location.reload();
-          }}
-          style={{
-            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-            border: 'none',
-            color: '#fff',
-            padding: '10px 24px',
-            borderRadius: '10px',
-            fontSize: '14px',
-            fontWeight: '800',
-            cursor: 'pointer'
-          }}
-        >
-          🔄 Tap to Retry
-        </button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button
+            onClick={() => {
+              setAuthStatus('loading');
+              authAttemptedRef.current = false;
+              window.location.reload();
+            }}
+            style={{
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+              border: 'none',
+              color: '#fff',
+              padding: '10px 20px',
+              borderRadius: '10px',
+              fontSize: '13px',
+              fontWeight: '800',
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Tap to Retry
+          </button>
+          <button
+            onClick={handlePlayAsGuest}
+            style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              border: 'none',
+              color: '#fff',
+              padding: '10px 20px',
+              borderRadius: '10px',
+              fontSize: '13px',
+              fontWeight: '800',
+              cursor: 'pointer'
+            }}
+          >
+            🎮 Play Demo Game
+          </button>
+        </div>
       </div>
     );
   }
@@ -602,7 +639,7 @@ export default function App() {
             margin: 0
           }}>
             BingoX is a <strong>Telegram Mini App</strong>.<br />
-            Open it through the bot to play.
+            Open it through the bot to play for real ETB.
           </p>
           {gateMessage ? (
             <p style={{ color: '#f87171', fontSize: '12px', marginTop: '10px', marginBottom: 0 }}>
@@ -611,6 +648,31 @@ export default function App() {
           ) : null}
         </div>
 
+        <button
+          onClick={handlePlayAsGuest}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            background: 'linear-gradient(135deg, #10b981, #059669)',
+            color: '#fff',
+            border: 'none',
+            padding: '14px 32px',
+            borderRadius: '50px',
+            fontSize: '15px',
+            fontWeight: '800',
+            boxShadow: '0 8px 28px rgba(16, 185, 129, 0.4)',
+            letterSpacing: '0.3px',
+            cursor: 'pointer',
+            marginBottom: '12px',
+            width: '100%',
+            maxWidth: '300px'
+          }}
+        >
+          🎮 Play Game Now
+        </button>
+
         <a
           href="https://t.me/bingox2019_bot"
           target="_blank"
@@ -618,6 +680,7 @@ export default function App() {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: '10px',
             background: 'linear-gradient(135deg, #2481cc, #1a6aaa)',
             color: '#fff',
@@ -627,7 +690,9 @@ export default function App() {
             fontSize: '15px',
             fontWeight: '800',
             boxShadow: '0 8px 28px rgba(36, 129, 204, 0.4)',
-            letterSpacing: '0.3px'
+            letterSpacing: '0.3px',
+            width: '100%',
+            maxWidth: '300px'
           }}
         >
           🚀 Open @bingox2019_bot

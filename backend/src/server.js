@@ -1,6 +1,27 @@
 const path = require('path');
 require('dotenv').config();
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+// Polyfill WebSocket before any Supabase imports
+if (typeof globalThis.WebSocket === 'undefined') {
+  try {
+    globalThis.WebSocket = require('ws');
+  } catch (e) {
+    try {
+      globalThis.WebSocket = require(path.join(__dirname, '../node_modules/ws'));
+    } catch (e2) {
+      class FallbackWebSocket {
+        constructor() {}
+        addEventListener() {}
+        removeEventListener() {}
+        send() {}
+        close() {}
+      }
+      globalThis.WebSocket = FallbackWebSocket;
+    }
+  }
+}
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');

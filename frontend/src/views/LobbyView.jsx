@@ -64,6 +64,10 @@ export default function LobbyView({
       setLocalMyCartellas(updated);
       if (onTicketPurchased) onTicketPurchased(balance + price);
 
+      if (user?.isGuest) {
+        return;
+      }
+
       try {
         const res = await apiFetch('/api/game/unselect-ticket', {
           method: 'POST',
@@ -113,6 +117,11 @@ export default function LobbyView({
     const updated = [...myCartellas, index];
     setLocalMyCartellas(updated);
     if (onTicketPurchased) onTicketPurchased(Math.max(0, balance - price));
+
+    if (user?.isGuest) {
+      purchasingRef.current.delete(index);
+      return;
+    }
 
     try {
       const res = await apiFetch('/api/game/buy-ticket', {

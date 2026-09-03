@@ -10,6 +10,26 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('[DB] WARNING: Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment variables!');
 }
 
+// WebSocket polyfill for Node.js < 22 to prevent Supabase RealtimeClient crash
+if (typeof globalThis.WebSocket === 'undefined') {
+  try {
+    globalThis.WebSocket = require('ws');
+  } catch (e) {
+    try {
+      globalThis.WebSocket = require(path.join(__dirname, '../node_modules/ws'));
+    } catch (e2) {
+      class FallbackWebSocket {
+        constructor() {}
+        addEventListener() {}
+        removeEventListener() {}
+        send() {}
+        close() {}
+      }
+      globalThis.WebSocket = FallbackWebSocket;
+    }
+  }
+}
+
 const supabase = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
