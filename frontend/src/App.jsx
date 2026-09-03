@@ -191,8 +191,8 @@ export default function App() {
           } catch {}
         }
 
-        // Telegram context detected!
-        if (initData || tgUser || telegramId) {
+        // Telegram context detected — wa present OR data already populated
+        if (wa || initData || tgUser || telegramId) {
           const tryAuth = () => {
             apiFetch('/api/auth/telegram-webapp', {
               method: 'POST',
