@@ -174,9 +174,10 @@ export default function App() {
 
     function startTelegramDetection() {
       let attempts = 0;
-      const MAX_ATTEMPTS = 20; // 20 * 100ms = 2.0s
+      const MAX_ATTEMPTS = 50; // 50 * 100ms = 5.0s total wait
       let retryCount = 0;
       const MAX_RETRIES = 3;
+      let waFoundAt = null; // track when WebApp object first appeared
 
       const checkTelegram = () => {
         attempts++;
@@ -189,10 +190,11 @@ export default function App() {
             wa.expand?.();
             wa.ready?.();
           } catch {}
+          if (!waFoundAt) waFoundAt = attempts; // record when wa first appeared
         }
 
-        // Telegram context detected — wa present OR data already populated
-        if (wa || initData || tgUser || telegramId) {
+        // Only fire auth when we have real user data
+        if (initData || tgUser || telegramId) {
           const tryAuth = () => {
             apiFetch('/api/auth/telegram-webapp', {
               method: 'POST',
@@ -242,12 +244,20 @@ export default function App() {
           return;
         }
 
-        // Wait for Telegram SDK to inject data
-        if (attempts < MAX_ATTEMPTS) {
+        // wa exists but data not yet populated — keep waiting (extra 3s grace)
+        if (wa && attempts < MAX_ATTEMPTS) {
           setTimeout(checkTelegram, 100);
-        } else {
-          setAuthStatus('not_telegram');
+          return;
         }
+
+        // No wa yet — keep polling up to 2s
+        if (!wa && attempts < 20) {
+          setTimeout(checkTelegram, 100);
+          return;
+        }
+
+        // wa was found but data never came — show not_telegram
+        setAuthStatus('not_telegram');
       };
 
       checkTelegram();
